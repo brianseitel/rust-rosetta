@@ -1,14 +1,9 @@
 use std::hashmap::HashMap;
 
 fn main() {
-	// let (encode_dict, decode_dict) = build_dict();
-
-	let uncompressed = ~"I like hot dogs and hot dogs are my favorite. Once I wrote a book about how bored I was, and I found out that my book was boring. I don't know how boring it was, but boredom is boring, I know.";
-
+	let uncompressed = ~"TOBEORNOTTOBEORTOBEORNOT";
 	let compressed = compress(uncompressed.clone());
-	println!("{:?}", compressed.clone());
-	println!("Length of uncompressed: {}", uncompressed.len().to_str());
-	println!("Length of compressed: {}", compressed.len().to_str());
+	println!("{:?}", compressed);
 	let decompressed = decompress(compressed);
 	println!("{:?}", decompressed);
 }
@@ -18,82 +13,55 @@ fn compress(uncompressed: ~str) -> ~[u32] {
 
 	for i in range(0, 256) {
 		let c = std::char::from_u32(i as u32).unwrap_or('?').to_str();
-		dict.insert(c, i as u32);
+		dict.insert(c.to_str(), i as u32);
 	}
 
-	let mut result: ~[u32] = ~[];
-	let mut dictSize = 256;
 	let mut w = ~"";
+	let mut result: ~[u32] = ~[];
 	for c in uncompressed.chars() {
 		let wc = w + c.to_str();
 
 		if dict.contains_key(&wc) {
-			println!("Found {}", wc);
-			w = wc;
+			w = wc.clone();
 		} else {
-			result.push(*dict.find(&w).unwrap() as u32);
+			let dictSize = dict.len();
+			result.push(*dict.get(&w));
 			dict.insert(wc.clone(), dictSize as u32);
-			dictSize += 1;
 			w = c.to_str();
-
-			println!("{:?} => {:?}", wc, dictSize as u32);
 		}
 	}
 
-	if !w.eq(&~"") {
+	if w.len() > 0 {
 		result.push(*dict.get(&w));
 	}
-
 	result
 }
 
-fn decompress(compressed: ~[u32]) -> ~str {
+fn decompress(mut compressed: ~[u32]) -> ~str {
 	let mut dict: HashMap<u32, ~str> = HashMap::new();
-
 	for i in range(0, 256) {
 		let c = std::char::from_u32(i as u32).unwrap_or('?').to_str();
-		dict.insert(i as u32, c);
+		dict.insert(i as u32, c.to_str());
 	}
 
-	let mut result = ~"";
-	let mut dictSize = 256;
-	let mut w = ~"";
-
-	result = w.clone();
-	for i in range(0, compressed.len()) {
-		let k = compressed.iter().nth(i).unwrap();
-		let mut entry = ~"";
-		if dict.contains_key(k) {
-			println!("Contains {}", k.to_str());
+	let mut dictSize: uint = dict.len();
+	let mut w: ~str = dict.get(&compressed[0]).to_str();
+	let mut result = w.clone();
+	compressed.remove(0);
+	for k in compressed.iter() {
+		let mut entry: ~str = ~"";
+		if (dict.contains_key(k)) {
 			entry = dict.get(k).to_str();
-		} else {
-			if i == dictSize {
-				println!("i == dictSize == {}", i.to_str());
-				entry = w.clone() + dict.get(k).to_str();
-			} else {
-				fail!("Bad compressed k: {:?} {:?}", k, i);
-			}
+		} else if *k == (dictSize - 1) as u32 {
+			entry = w.clone() + w.slice_to(1);
 		}
+
 		result = result + entry.clone();
+		dict.insert(dictSize as u32, w.clone() + entry.slice_to(1));
 		dictSize += 1;
-		dict.insert(dictSize as u32, w.clone() + entry.clone());
 
 		w = entry;
 	}
 
 	result
 }
-
-// fn build_dict() -> (HashMap<~str, u32>, HashMap<u32, ~str>) {
-// 	let mut compress_list: HashMap<~str, u32> = HashMap::new();
-// 	let mut decompress_list: HashMap<u32, ~str> = HashMap::new();
-
-// 	for i in range(0, 256) {
-// 		let c = std::char::from_u32(i as u32).unwrap_or('?').to_str();
-// 		let c2 = c.clone();
-// 		compress_list.insert(c, i as u32);
-// 		decompress_list.insert(i as u32, c2);
-// 	}
-
-// 	(compress_list, decompress_list)
-// }
