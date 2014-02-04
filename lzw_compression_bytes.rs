@@ -1,91 +1,122 @@
 use std::hashmap::HashMap;
 use std::io::File;
 
-fn main() {
-	let path = Path::new("/Users/brianseitel/Downloads/paradise-lost2.txt");
-	let uncompressed = File::open(&path).read_to_end();
+static initialdictsize: uint = 256;
+static maxdictsize: uint = 65535;
 
-	let compressed = compress(uncompressed.clone());
-	println!("{:?}", compressed);
+fn main() {
+	let mut args = std::os::args();
+
+	if args.len() < 3 {
+		fail!("Syntax: ./lzw_compression_bytes (source) (destination)");
+	}
+	args.shift(); // lose first arg, which is command
+	let source: ~str = args.shift();
+	let dest: ~str = args.shift();
+
+	let uncompressed = read_file(source.clone());
+
+	let compressed = compress(uncompressed);
+	write_compressed(compressed.clone(), source.clone());
+println!("------");
 	let decompressed = decompress(compressed);
-	println!("{:?}", decompressed);
+	write_decompressed(decompressed, dest.clone());
 }
 
-fn compress(uncompressed: ~[u8]) -> ~[u32] {
-	let maxdictsize = 1000;
+fn compress(uncompressed: ~[u8]) -> ~[u16] {
 	let mut dict = build_compression_dict();
-
-	let mut w = ~"";
-	let mut result: ~[u32] = ~[];
-	for c in uncompressed.iter() {
-		if dict.len() > maxdictsize {
-			let mut dict = build_compression_dict();
-		}
-		let wc = w + c.to_str();
+	println!("Original: {:?}", uncompressed);
+	let mut w: ~[u8] = ~[];
+	let mut result: ~[u16] = ~[];
+	for &c in uncompressed.iter() {
+		let mut wc = w.clone();
+		wc.push(c);
 
 		if dict.contains_key(&wc) {
 			w = wc.clone();
 		} else {
 			let dictSize = dict.len();
 			result.push(*dict.get(&w));
-			dict.insert(wc.clone(), dictSize as u32);
-			w = c.to_str();
+			dict.insert(wc.clone(), dictSize as u16);
+			println!("Adding {:?} => {:?}", wc.clone(), dict.len() as u16);
+			w = ~[c];
+		}
+		if dict.len() as uint > maxdictsize {
+			dict = build_compression_dict();
 		}
 	}
 
 	if w.len() > 0 {
 		result.push(*dict.get(&w));
 	}
+
 	result
 }
 
-fn build_compression_dict() -> HashMap<~str, u32> {
-	let mut dict: HashMap<~str, u32> = HashMap::new();
-
-	for i in range(0, 256) {
-		let c = std::char::from_u32(i as u32).unwrap_or('?').to_str();
-		dict.insert(c.to_str(), i as u32);
-	}
-
-	dict
-}
-
-fn build_decompression_dict() -> HashMap<u32, ~str> {
-	let mut dict: HashMap<u32, ~str> = HashMap::new();
-	for i in range(0, 256) {
-		let c = std::char::from_u32(i as u32).unwrap_or('?').to_str();
-		dict.insert(i as u32, c.to_str());
-	}
-
-	dict
-}
-
-fn decompress(mut compressed: ~[u32]) -> ~str {
-	let maxdictsize = 1000;
+fn decompress(mut compressed: ~[u16]) -> ~[u8] {
 	let mut dict = build_decompression_dict();
-
-	let mut dictSize: uint = dict.len();
-	let mut w: ~str = dict.get(&compressed[0]).to_str();
+	let mut dictSize: u16 = dict.len() as u16;
+	let mut w: ~[u8] = ~[compressed.shift() as u8];
 	let mut result = w.clone();
-	compressed.remove(0);
+
 	for k in compressed.iter() {
-		if dict.len() > maxdictsize {
-			let mut dict = build_decompression_dict();
-		}
-		let mut entry: ~str = ~"";
-		if (dict.contains_key(k)) {
-			entry = dict.get(k).to_str();
-		} else if *k == (dictSize - 1) as u32 {
-			entry = w.clone() + w.slice_to(1);
+		let mut entry: ~[u8] = ~[];
+		if dict.contains_key(k) {
+			entry = dict.get(k).to_owned();
+		} else if k == &dictSize {
+			entry.push(w[0]);
 		}
 
-		result = result + entry;
-		if (entry.len() > 0) {
-			dict.insert(dictSize as u32, w + entry.slice_to(1));
-			dictSize += 1;
-		}
-		w = entry;
+		println!("Result {:?}", result);
+		let mut new_entry = w.clone();
+		new_entry.push(entry[0]);
+		dict.insert(dictSize, new_entry.clone());
+		dictSize = dict.len() as u16;
+		println!("Adding {:?} => {:?}", new_entry, dictSize as u16);
+
+		std::vec::bytes::push_bytes(&mut result, entry);
+		w = entry.clone();
 	}
 
 	result
+}
+
+fn write_decompressed(data: ~[u8], filepath: ~str) {
+	let path = Path::new(filepath);
+	let mut fp = File::create(&path);
+	fp.write(data);
+}
+
+fn write_compressed(data: ~[u16], filepath: ~str) {
+	let path = Path::new(filepath + ".compressed");
+	let mut fp = File::create(&path);
+	for b in data.iter() {
+		fp.write_be_u16(*b);
+	}
+}
+
+fn read_file(filepath: ~str) -> ~[u8] {
+	let path = Path::new(filepath);
+	File::open(&path).read_to_end()
+}
+
+fn build_compression_dict() -> HashMap<~[u8], u16> {
+	let mut dict: HashMap<~[u8], u16> = HashMap::new();
+
+	for i in range(0, initialdictsize) {
+		let c = std::char::from_u32(i as u32).unwrap_or('?');
+		dict.insert(~[c as u8], i as u16);
+	}
+
+	dict
+}
+
+fn build_decompression_dict() -> HashMap<u16, ~[u8]> {
+	let mut dict: HashMap<u16, ~[u8]> = HashMap::new();
+	for i in range(0, initialdictsize) {
+		let c = std::char::from_u32(i as u32).unwrap_or('?');
+		dict.insert(i as u16, ~[c as u8]);
+	}
+
+	dict
 }
