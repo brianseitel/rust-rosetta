@@ -2,10 +2,10 @@ use std::hashmap::HashMap;
 use std::io::File;
 
 fn main() {
-	let path = Path::new("/Users/brianseitel/Downloads/paradise-lost2.txt");
-	let uncompressed = File::open(&path).read_to_end();
+	// let path = Path::new("/Users/brianseitel/Downloads/paradise-lost2.txt");
+	// let uncompressed = File::open(&path).read_to_end();
 
-	let mut uncompressed = (~"TOBEORNOTTOBEORTO BEORNOT").into_bytes();
+	let uncompressed = (~"TOBEORNOTTOBEORTOBEORNOT").into_bytes();
 	println!("Original: {:?}", uncompressed.len());
 	println!("Compressing...");
 	let compressed = compress(uncompressed);
@@ -87,29 +87,30 @@ fn decompress(mut compressed: ~[u8]) -> ~[u8] {
 	let maxdictsize = 1000;
 	let mut dict = build_decompression_dict();
 
-	let mut dictSize: uint = dict.len();
+	let mut dictSize: u8 = dict.len() as u8;
 	let mut w: ~[u8] = dict.get(&compressed[0]).to_owned();
 	let mut result = w.clone();
+
 	compressed.remove(0);
 	for k in compressed.iter() {
 		if dict.len() > maxdictsize {
 			let mut dict = build_decompression_dict();
 		}
 		let mut entry: ~[u8] = ~[];
-		if (dict.contains_key(k)) {
+		if dict.contains_key(k) {
 			entry = dict.get(k).to_owned();
-		} else if k == &((dictSize - 1) as u8) {
+		} else if k == &((dictSize.clone() - 1) as u8) {
 			entry.push(w[0]);
 		}
 
 		std::vec::bytes::push_bytes(&mut result, entry);
-		if (entry.len() > 0) {
-			let mut new_entry = w.clone();
-			new_entry.push(w[0]);
-			dict.insert(dictSize as u8, new_entry);
-			dictSize += 1;
-		}
-		w = entry;
+
+		let mut new_entry = entry.clone();
+		new_entry.push(w[0]);
+		dict.insert(dictSize as u8, new_entry.clone());
+		dictSize += 1;
+
+		w = new_entry;
 	}
 
 	result
