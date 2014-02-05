@@ -7,12 +7,11 @@ static maxdictsize: uint = 65535;
 fn main() {
 	let mut args = std::os::args();
 
-	if args.len() < 3 {
-		fail!("Syntax: ./lzw_compression_bytes (source) (destination)");
+	if args.len() < 2 {
+		fail!("Syntax: ./lzw_compression_bytes (source)");
 	}
 	args.shift(); // lose first arg, which is command
 	let source: ~str = args.shift();
-	let dest: ~str = args.shift();
 
 	let uncompressed = read_file(source.clone());
 
@@ -22,7 +21,7 @@ fn main() {
 	println!("------");
 
 	let decompressed = decompress(compressed);
-	write_decompressed(decompressed, dest.clone());
+	write_decompressed(decompressed, source.clone());
 }
 
 fn compress(uncompressed: ~[u8]) -> ~[u16] {
@@ -70,13 +69,14 @@ fn decompress(mut compressed: ~[u16]) -> ~[u8] {
 		let mut new_entry = w.clone();
 		new_entry.push(entry[0]);
 		dict.insert(dictSize, new_entry.clone());
-		dictSize = dict.len() as u16;
+		dictSize += 1;
 
 		std::vec::bytes::push_bytes(&mut result, entry);
 		w = entry.clone();
 
 		if dict.len() as uint > maxdictsize {
 			dict = build_decompression_dict();
+			dictSize = dict.len() as u16;
 		}
 	}
 
@@ -84,7 +84,7 @@ fn decompress(mut compressed: ~[u16]) -> ~[u8] {
 }
 
 fn write_decompressed(data: ~[u8], filepath: ~str) {
-	let path = Path::new(filepath);
+	let path = Path::new(filepath + ".decompressed");
 	let mut fp = File::create(&path);
 	fp.write(data);
 }
