@@ -18,14 +18,15 @@ fn main() {
 
 	let compressed = compress(uncompressed);
 	write_compressed(compressed.clone(), source.clone());
-println!("------");
+	
+	println!("------");
+
 	let decompressed = decompress(compressed);
 	write_decompressed(decompressed, dest.clone());
 }
 
 fn compress(uncompressed: ~[u8]) -> ~[u16] {
 	let mut dict = build_compression_dict();
-	println!("Original: {:?}", uncompressed);
 	let mut w: ~[u8] = ~[];
 	let mut result: ~[u16] = ~[];
 	for &c in uncompressed.iter() {
@@ -38,7 +39,6 @@ fn compress(uncompressed: ~[u8]) -> ~[u16] {
 			let dictSize = dict.len();
 			result.push(*dict.get(&w));
 			dict.insert(wc.clone(), dictSize as u16);
-			println!("Adding {:?} => {:?}", wc.clone(), dict.len() as u16);
 			w = ~[c];
 		}
 		if dict.len() as uint > maxdictsize {
@@ -67,15 +67,17 @@ fn decompress(mut compressed: ~[u16]) -> ~[u8] {
 			entry.push(w[0]);
 		}
 
-		println!("Result {:?}", result);
 		let mut new_entry = w.clone();
 		new_entry.push(entry[0]);
 		dict.insert(dictSize, new_entry.clone());
 		dictSize = dict.len() as u16;
-		println!("Adding {:?} => {:?}", new_entry, dictSize as u16);
 
 		std::vec::bytes::push_bytes(&mut result, entry);
 		w = entry.clone();
+
+		if dict.len() as uint > maxdictsize {
+			dict = build_decompression_dict();
+		}
 	}
 
 	result
