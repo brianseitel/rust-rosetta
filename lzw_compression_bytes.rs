@@ -20,6 +20,8 @@ fn main() {
 	
 	println!("------");
 
+	let compressed = read_compressed(source.clone());
+
 	let decompressed = decompress(compressed);
 	write_decompressed(decompressed, source.clone());
 }
@@ -95,6 +97,18 @@ fn write_compressed(data: ~[u16], filepath: ~str) {
 	for b in data.iter() {
 		fp.write_be_u16(*b);
 	}
+}
+
+fn read_compressed(filepath: ~str) -> ~[u16] {
+	let path = Path::new(filepath + ".compressed");
+	let mut file = File::open(&path).unwrap();
+	let mut compressed: ~[u16] = ~[];
+	loop {
+		if file.eof() { break; }
+		compressed.push(file.read_be_u16());
+	}
+
+	compressed
 }
 
 fn read_file(filepath: ~str) -> ~[u8] {
