@@ -54,31 +54,30 @@ fn compress(uncompressed: ~[u8]) -> ~[u16] {
 	result
 }
 
-fn decompress(mut compressed: ~[u16]) -> ~[u8] {
+fn decompress(compressed: ~[u16]) -> ~[u8] {
 	let mut dict = build_decompression_dict();
-	let mut dictSize: u16 = dict.len() as u16;
-	let mut w: ~[u8] = ~[compressed.shift() as u8];
-	let mut result = w.clone();
+	let mut result: ~[u8] = ~[];
 
-	for k in compressed.iter() {
-		let mut entry: ~[u8] = ~[];
-		if dict.contains_key(k) {
-			entry = dict.get(k).to_owned();
-		} else if k == &dictSize {
-			entry.push(w[0]);
-		}
+	for i in range(0, compressed.len()) {
+		let k = compressed[i];
 
-		let mut new_entry = w.clone();
-		new_entry.push(entry[0]);
-		dict.insert(dictSize, new_entry.clone());
-		dictSize += 1;
+		let mut entry = dict.get(&k).to_owned();
+		let new_key = dict.len() as u16;
 
 		std::vec::bytes::push_bytes(&mut result, entry);
-		w = entry.clone();
+
+		if i < compressed.len() - 1 {
+			let kn = compressed[i+1];
+			if dict.contains_key(&kn) {
+				entry.push(dict.get(&kn)[0]);
+			} else {
+				entry.push(entry[0]);
+			}
+			dict.insert(new_key, entry);
+		}
 
 		if dict.len() as uint > maxdictsize {
 			dict = build_decompression_dict();
-			dictSize = dict.len() as u16;
 		}
 	}
 
