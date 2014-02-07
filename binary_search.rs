@@ -12,7 +12,7 @@ fn bsearch(mut haystack: ~[uint], needle: uint) -> int {
 	let mut high:uint = haystack.len() - 1;
 
 	while low <= high {
-		let middle: uint = (low + high) / 2;
+		let middle: uint = low + (high - low) / 2;
 		if haystack[middle] > needle {
 			high = middle - 1;
 		} else if haystack[middle] < needle {
