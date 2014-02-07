@@ -11,7 +11,11 @@ fn main() {
 		fail!("Syntax: ./lzw_compression_bytes (source)");
 	}
 	args.shift(); // lose first arg, which is command
-	let source: ~str = args.shift();
+	let source: ~str = args.shift().unwrap();
+
+	if source.len() == 0 {
+		fail!("Syntax: ./lzw_compression_bytes (source)");
+	}
 
 	let uncompressed = read_file(source.clone());
 
@@ -87,14 +91,20 @@ fn decompress(compressed: ~[u16]) -> ~[u8] {
 fn write_decompressed(data: ~[u8], filepath: ~str) {
 	let path = Path::new(filepath + ".decompressed");
 	let mut fp = File::create(&path);
-	fp.write(data);
+	match fp.write(data) {
+		Err(x) => println!("Error writing decompressed file: {:?}", x),
+		Ok(_) => {}
+	}
 }
 
 fn write_compressed(data: ~[u16], filepath: ~str) {
 	let path = Path::new(filepath + ".compressed");
 	let mut fp = File::create(&path);
 	for b in data.iter() {
-		fp.write_be_u16(*b);
+		match fp.write_be_u16(*b) {
+			Err(x) => println!("Error writing compressed file: {:?}", x),
+			Ok(_) => {}
+		}
 	}
 }
 
@@ -103,8 +113,12 @@ fn read_compressed(filepath: ~str) -> ~[u16] {
 	let mut file = File::open(&path).unwrap();
 	let mut compressed: ~[u16] = ~[];
 	loop {
-		if file.eof() { break; }
-		compressed.push(file.read_be_u16());
+		let b = file.read_be_u16();
+		match b {
+			Ok(x) => compressed.push(x),
+			Err(_) => break // End of the file, get outta here.
+		};
+
 	}
 
 	compressed
@@ -112,7 +126,7 @@ fn read_compressed(filepath: ~str) -> ~[u16] {
 
 fn read_file(filepath: ~str) -> ~[u8] {
 	let path = Path::new(filepath);
-	File::open(&path).read_to_end()
+	File::open(&path).read_to_end().unwrap()
 }
 
 fn build_compression_dict() -> HashMap<~[u8], u16> {
