@@ -7,8 +7,15 @@ fn main() {
 fn run_length(input: ~str) -> ~str {
 	let mut count: uint = 0;
 	let mut output = ~"";
+
+	// Get first character
 	let mut last: char = input.char_at(0);
+
 	for c in input.chars() {
+		// If the current character is different from the last character,
+		// append the count and the last character to the string.
+		// Then reset the count and make the current character the "last"
+		// character
 		if last != c {
 			output = output + count.to_str() + last.to_str();
 			count = 0;
@@ -18,6 +25,7 @@ fn run_length(input: ~str) -> ~str {
 		count += 1;
 	}
 
+	// If we have any counts left over, append them to the string
 	if count > 0 {
 		output = output + count.to_str() + last.to_str();
 	}
