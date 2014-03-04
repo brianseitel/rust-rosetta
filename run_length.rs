@@ -20,7 +20,8 @@ fn run_length(input: ~str) -> ~str {
 		// Then reset the count and make the current character the "last"
 		// character
 		if last != c {
-			output = output + count.to_str() + last.to_str();
+			output.push_str(count.to_str());
+			output.push_str(last.to_str());
 			count = 0;
 			last = c;
 		}
@@ -30,7 +31,8 @@ fn run_length(input: ~str) -> ~str {
 
 	// If we have any counts left over, append them to the string
 	if count > 0 {
-		output = output + count.to_str() + last.to_str();
+		output.push_str(count.to_str());
+		output.push_str(last.to_str());
 	}
 
 	output
@@ -46,12 +48,12 @@ fn decode(input: ~str) -> ~str {
 		// If the character is a digit, append it to the number string.
 		// Eventually, we'll wind up with "1" or "12"
 		if c.is_digit() {
-			number = number + c.to_str();
+			number.push_str(c.to_str());
 		} else {
 			// If it's not a digit, then it's a letter. Cast to uint,
 			// then repeat the character X times and append to output.
 			let num = from_str::<uint>(number).unwrap_or(0);
-			output = output + c.to_str().repeat(num);
+			output.push_str(c.to_str().repeat(num));
 			number = ~"";
 		}
 	}
